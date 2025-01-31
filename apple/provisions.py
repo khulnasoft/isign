@@ -18,10 +18,17 @@ UNZIP_BIN = '/usr/bin/unzip'
 
 
 class ReceivedApp(object):
+    """
+    Represents a received application, either an .app or .ipa file.
+    """
+
     def __init__(self, path):
         self.path = path
 
     def unpack_to_dir(self, unpack_dir):
+        """
+        Unpacks the received application to the specified directory.
+        """
         app_name = os.path.basename(self.path)
         target_dir = os.path.join(unpack_dir, app_name)
         shutil.copytree(self.path, target_dir)
@@ -29,12 +36,23 @@ class ReceivedApp(object):
 
 
 class ReceivedIpaApp(ReceivedApp):
+    """
+    Represents a received .ipa application.
+    """
+
     def unpack_to_dir(self, target_dir):
+        """
+        Unpacks the received .ipa application to the specified directory.
+        """
         call([UNZIP_BIN, "-qu", self.path, "-d", target_dir])
         return IpaApp(target_dir)
 
 
 class App(object):
+    """
+    Represents an application to be re-signed.
+    """
+
     def __init__(self, path):
         self.path = path
         self.entitlements_path = os.path.join(self.path,
@@ -44,13 +62,22 @@ class App(object):
                                            'embedded.mobileprovision')
 
     def get_app_dir(self):
+        """
+        Returns the directory of the application.
+        """
         return self.path
 
     def provision(self, provision_path):
+        """
+        Copies the provisioning profile to the application directory.
+        """
         print "provision_path: {0}".format(provision_path)
         shutil.copyfile(provision_path, self.provision_path)
 
     def create_entitlements(self):
+        """
+        Creates the entitlements file for the application.
+        """
         # we decode part of the provision path, then extract the
         # Entitlements part, then write that to a file in the app.
 
@@ -80,9 +107,15 @@ class App(object):
         decoded_provision_fh.close()
 
     def codesign(self, certificate, path, extra_args=[]):
+        """
+        Signs the specified path with the given certificate.
+        """
         call([CODESIGN_BIN, '-f', '-s', certificate] + extra_args + [path])
 
     def sign(self, certificate):
+        """
+        Signs the application and its frameworks with the given certificate.
+        """
         # first sign all the dylibs
         frameworks_path = os.path.join(self.app_dir, 'Frameworks')
         if os.path.exists(frameworks_path):
@@ -95,6 +128,9 @@ class App(object):
                       ['--entitlements', self.entitlements_path])
 
     def package(self, output_path):
+        """
+        Packages the application into the specified output path.
+        """
         if not output_path.endswith('.app'):
             output_path = output_path + '.app'
         os.rename(self.app_dir, output_path)
@@ -102,10 +138,20 @@ class App(object):
 
 
 class IpaApp(App):
+    """
+    Represents an .ipa application to be re-signed.
+    """
+
     def _get_payload_dir(self):
+        """
+        Returns the payload directory of the .ipa application.
+        """
         return os.path.join(self.path, "Payload")
 
     def get_app_dir(self):
+        """
+        Returns the directory of the .ipa application.
+        """
         glob_path = os.path.join(self._get_payload_dir(), '*.app')
         apps = glob.glob(glob_path)
         count = len(apps)
@@ -115,6 +161,9 @@ class IpaApp(App):
         return apps[0]
 
     def package(self, output_path):
+        """
+        Packages the .ipa application into the specified output path.
+        """
         if not output_path.endswith('.ipa'):
             output_path = output_path + '.ipa'
         temp = "out.ipa"
@@ -130,16 +179,25 @@ class IpaApp(App):
 
 
 def absolute_path_argument(path):
+    """
+    Returns the absolute path of the given argument.
+    """
     return os.path.abspath(path)
 
 
 def exists_absolute_path_argument(path):
+    """
+    Checks if the given path exists and returns its absolute path.
+    """
     if not os.path.exists(path):
         raise argparse.ArgumentTypeError("%s does not exist!" % path)
     return absolute_path_argument(path)
 
 
 def app_argument(path):
+    """
+    Determines the type of application (ReceivedApp or ReceivedIpaApp) based on the file extension.
+    """
     path = exists_absolute_path_argument(path)
     _, extension = os.path.splitext(path)
     if extension == '.app':
@@ -153,6 +211,9 @@ def app_argument(path):
 
 
 def parse_args():
+    """
+    Parses the command-line arguments.
+    """
     parser = argparse.ArgumentParser(
             description='Resign an iOS application with a new identity '
                         'and provisioning profile.')
