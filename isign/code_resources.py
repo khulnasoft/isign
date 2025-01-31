@@ -5,7 +5,6 @@ import logging
 from memoizer import memoize
 import os
 import plistlib
-from plistlib import PlistWriter
 import re
 
 OUTPUT_DIRECTORY = '_CodeSignature'
@@ -22,6 +21,8 @@ log = logging.getLogger(__name__)
 # Apple's plist utils work like this:
 #   1234.5 --->  <real>1234.5</real>
 #   1234.0 --->  <real>1234</real>
+
+"""
 def writeValue(self, value):
     if isinstance(value, float):
         rep = repr(value)
@@ -33,6 +34,7 @@ def writeValue(self, value):
 
 PlistWriter.oldWriteValue = PlistWriter.writeValue
 PlistWriter.writeValue = writeValue
+"""
 
 
 # Simple reimplementation of ResourceBuilder, in the Apple Open Source
@@ -56,7 +58,7 @@ class PathRule(object):
                 # if it was true, this file is required;
                 # do nothing
             elif isinstance(properties, dict):
-                for key, value in properties.iteritems():
+                for key, value in list(properties.items()):
                     if key == 'optional' and value is True:
                         self.flags |= PathRule.OPTIONAL
                     elif key == 'omit' and value is True:
@@ -91,12 +93,13 @@ class PathRule(object):
 class ResourceBuilder(object):
     NULL_PATH_RULE = PathRule()
 
-    def __init__(self, app_path, rules_data, respect_omissions=False):
+    def __init__(self, app_path, rules_data, respect_omissions=False, include_sha256=False):
         self.app_path = app_path
         self.app_dir = os.path.dirname(app_path)
         self.rules = []
         self.respect_omissions = respect_omissions
-        for pattern, properties in rules_data.iteritems():
+        self.include_sha256 = include_sha256
+        for pattern, properties in list(rules_data.items()):
             self.rules.append(PathRule(pattern, properties))
 
     def find_rule(self, path):
@@ -107,7 +110,7 @@ class ResourceBuilder(object):
                 if rule.flags and rule.is_exclusion():
                     best_rule = rule
                     break
-                elif rule.weight > best_rule.weight:
+                elif rule.weight >= best_rule.weight:
                     best_rule = rule
         return best_rule
 
@@ -131,6 +134,12 @@ class ResourceBuilder(object):
                                                                     filename)
                 # log.debug(rule_debug_fmt.format(rule, path, relative_path))
 
+                # There's no rule for the Entitlements.plist file which we
+                # generate temporarily so we just ommit the file as a special
+                # case...
+                if relative_path == 'Entitlements.plist':
+                    continue
+
                 if rule.is_exclusion():
                     continue
 
@@ -140,8 +149,17 @@ class ResourceBuilder(object):
                 if self.app_path == path:
                     continue
 
-                # the Data element in plists is base64-encoded
-                val = {'hash': plistlib.Data(get_hash_binary(path))}
+                # in the case of symlinks, we don't calculate the hash but rather add a key for it being a symlink
+                if os.path.islink(path):
+                    # omit symlinks from files, leave in files2
+                    if not self.respect_omissions:
+                        continue
+                    val = {'symlink': os.readlink(path)}
+                else:
+                    # the Data element in plists is base64-encoded
+                    val = {'hash': plistlib.Data(get_hash_binary(path))}
+                    if self.include_sha256:
+                        val['hash2'] = plistlib.Data(get_hash_binary(path, 'sha256'))
 
                 if rule.is_optional():
                     val['optional'] = True
@@ -172,14 +190,20 @@ def get_template():
     """
     current_dir = os.path.dirname(os.path.abspath(__file__))
     template_path = os.path.join(current_dir, TEMPLATE_FILENAME)
-    fh = open(template_path, 'r')
-    return plistlib.readPlist(fh)
+    # fh = open(template_path, 'r')
+    return plistlib.readPlist(template_path)
 
 
 @memoize
-def get_hash_hex(path):
+def get_hash_hex(path, hash_type='sha1'):
     """ Get the hash of a file at path, encoded as hexadecimal """
-    hasher = hashlib.sha1()
+    if hash_type == 'sha256':
+        hasher = hashlib.sha256()
+    elif hash_type == 'sha1':
+        hasher = hashlib.sha1()
+    else:
+        raise ValueError("Incorrect hash type provided: {}".format(hash_type))
+
     with open(path, 'rb') as afile:
         buf = afile.read(HASH_BLOCKSIZE)
         while len(buf) > 0:
@@ -189,9 +213,9 @@ def get_hash_hex(path):
 
 
 @memoize
-def get_hash_binary(path):
+def get_hash_binary(path, hash_type='sha1'):
     """ Get the hash of a file at path, encoded as binary """
-    return binascii.a2b_hex(get_hash_hex(path))
+    return binascii.a2b_hex(get_hash_hex(path, hash_type))
 
 
 def write_plist(target_dir, plist):
@@ -200,8 +224,8 @@ def write_plist(target_dir, plist):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     output_path = os.path.join(output_dir, OUTPUT_FILENAME)
-    fh = open(output_path, 'w')
-    plistlib.writePlist(plist, fh)
+    # fh = open(output_path, 'w')
+    plistlib.writePlist(plist, output_path)
     return output_path
 
 
@@ -217,10 +241,11 @@ def make_seal(source_app_path, target_dir=None):
     # n.b. code_resources_template not only contains a template of
     # what the file should look like; it contains default rules
     # deciding which files should be part of the seal
-    rules = template['rules2']
+    rules = template['rules']
     plist = copy.deepcopy(template)
-    resource_builder = ResourceBuilder(source_app_path, rules)
+    resource_builder = ResourceBuilder(source_app_path, rules, respect_omissions=False)
     plist['files'] = resource_builder.scan()
-    resource_builder2 = ResourceBuilder(source_app_path, rules, True)
+    rules2 = template['rules2']
+    resource_builder2 = ResourceBuilder(source_app_path, rules2, respect_omissions=True, include_sha256=True)
     plist['files2'] = resource_builder2.scan()
     return write_plist(target_dir, plist)
