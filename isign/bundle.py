@@ -296,3 +296,61 @@ class App(Bundle):
         # The entitlements are only needed temporarily while signing so we
         # don't want to leave the file in the Payload/archive...
         os.remove(self.entitlements_path);
+
+import unittest
+
+class TestBundle(unittest.TestCase):
+
+    def setUp(self):
+        self.bundle_path = "test_bundle"
+        os.mkdir(self.bundle_path)
+        self.info_plist_path = join(self.bundle_path, "Info.plist")
+        with open(self.info_plist_path, "w") as f:
+            f.write("""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.example.test</string>
+    <key>CFBundleExecutable</key>
+    <string>TestExecutable</string>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>iPhoneOS</string>
+    </array>
+</dict>
+</plist>""")
+
+    def tearDown(self):
+        shutil.rmtree(self.bundle_path)
+
+    def test_get_executable_path(self):
+        bundle = Bundle(self.bundle_path)
+        self.assertEqual(bundle.get_executable_path(), join(self.bundle_path, "TestExecutable"))
+
+    def test_update_info_props(self):
+        bundle = Bundle(self.bundle_path)
+        new_props = {"CFBundleIdentifier": "com.example.newtest"}
+        bundle.update_info_props(new_props)
+        self.assertEqual(bundle.get_info_prop("CFBundleIdentifier"), "com.example.newtest")
+
+    def test_info_props_changed(self):
+        bundle = Bundle(self.bundle_path)
+        self.assertFalse(bundle.info_props_changed())
+        new_props = {"CFBundleIdentifier": "com.example.newtest"}
+        bundle.update_info_props(new_props)
+        self.assertTrue(bundle.info_props_changed())
+
+    def test_info_prop_changed(self):
+        bundle = Bundle(self.bundle_path)
+        self.assertFalse(bundle.info_prop_changed("CFBundleIdentifier"))
+        new_props = {"CFBundleIdentifier": "com.example.newtest"}
+        bundle.update_info_props(new_props)
+        self.assertTrue(bundle.info_prop_changed("CFBundleIdentifier"))
+
+    def test_get_info_prop(self):
+        bundle = Bundle(self.bundle_path)
+        self.assertEqual(bundle.get_info_prop("CFBundleIdentifier"), "com.example.test")
+
+if __name__ == "__main__":
+    unittest.main()
