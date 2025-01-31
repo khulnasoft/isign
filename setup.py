@@ -8,16 +8,16 @@ from setuptools import setup, find_packages
 
 HERE = path.abspath(path.dirname(__file__))
 
-__version__ = "0.10.20"
-PACKAGE_NAME = "ak_isign"
+__version__ = "0.10.21"
+PACKAGE_NAME = "isign"
 
 
 setup(
     name=PACKAGE_NAME,
     version=__version__,
     description='Re-signing iOS apps without Apple tools',
-    url='https://github.com/saucelabs/{}'.format(PACKAGE_NAME),
-    download_url='https://github.com/saucelabs/{}/tarball/v{}'.format(
+    url='https://github.com/khulnasoft/{}'.format(PACKAGE_NAME),
+    download_url='https://github.com/khulnasoft/{}/tarball/v{}'.format(
         PACKAGE_NAME, __version__),
     author='Sauce Labs',
     author_email='dev@saucelabs.com',
@@ -31,7 +31,6 @@ setup(
     keywords=['ios', 'app', 'signature', 'codesign', 'sign', 'resign'],
     packages=find_packages(),
     install_requires=[
-        # 'biplist==0.9',
         'ak-construct==2.5.2',
         'memoizer==0.0.1',
         'pyOpenSSL==24.1.0',
