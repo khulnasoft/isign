@@ -31,3 +31,18 @@ class ImproperCredentials(Exception):
 class OpenSslFailure(Exception):
     """ something is wrong with openssl output """
     pass
+
+
+class InvalidProvisioningProfile(Exception):
+    """ thrown if the provisioning profile is invalid """
+    pass
+
+
+class EntitlementsError(Exception):
+    """ thrown if there is an error with entitlements """
+    pass
+
+
+class SigningError(Exception):
+    """ thrown if there is an error during the signing process """
+    pass
