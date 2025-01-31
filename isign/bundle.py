@@ -9,18 +9,18 @@
 
     See the Apple Developer Documentation "About Bundles" """
 
-import biplist
-import code_resources
-from exceptions import NotMatched
+import plistlib
+from . import code_resources
+from .exceptions import NotMatched
 import copy
 import glob
 import logging
 import os
+import biplist
 from os.path import basename, exists, join, splitext
-from signer import openssl_command
-import signable
+from .signer import openssl_command
+from . import signable
 import shutil
-
 
 log = logging.getLogger(__name__)
 
@@ -45,14 +45,18 @@ class Bundle(object):
     entitlements_path = None  # Not set for every bundle type
 
     def __init__(self, path):
-        self.path = path
+        try:
+            self.path = path.encode('cp437').decode('utf-8')
+        except UnicodeEncodeError:
+            self.path = path
         self.info_path = join(self.path, 'Info.plist')
         if not exists(self.info_path):
             raise NotMatched("no Info.plist found; probably not a bundle")
-        self.info = biplist.readPlist(self.info_path)
+        self.info = plistlib.readPlist(self.info_path)
         self.orig_info = None
         if not is_info_plist_native(self.info):
-            raise NotMatched("not a native iOS bundle")
+            # while we should probably not allow this *or* add it ourselves, it appears to work without it
+            log.debug("Missing/invalid CFBundleSupportedPlatforms value in {}".format(self.info_path))
         # will be added later
         self.seal_path = None
 
@@ -93,7 +97,7 @@ class Bundle(object):
                     url_type['CFBundleURLName'] = new_bundle_id
                     changed = True
 
-        for key, val in new_props.iteritems():
+        for key, val in list(new_props.items()):
             is_new_key = key not in self.info
             if is_new_key or self.info[key] != val:
                 if is_new_key:
@@ -102,7 +106,7 @@ class Bundle(object):
                 changed = True
 
         if changed:
-            biplist.writePlist(self.info, self.info_path, binary=True)
+            plistlib.writePlist(self.info, self.info_path)
         else:
             self.orig_info = None
 
@@ -190,6 +194,34 @@ class Framework(Bundle):
     def __init__(self, path):
         super(Framework, self).__init__(path)
 
+    def sign(self, deep, signer):
+        """ Sign everything in the framework.  If deep is specified, sign
+        recursively with sub-bundles """
+        if deep:
+            frameworks_path = join(self.path, 'Frameworks')
+            if exists(frameworks_path):
+                for framework_name in os.listdir(frameworks_path):
+                    framework_path = join(frameworks_path, framework_name)
+                    try:
+                        framework = Framework(framework_path)
+                        framework.resign(deep, signer)
+                    except NotMatched:
+                        continue
+                self.sign_dylibs(signer, frameworks_path)
+                
+        try:
+            executable_path = self.get_executable_path()
+        except Exception as e:
+            executable_path = None
+        
+        # Sign only if executable exist
+        if executable_path:
+            self.seal_path = code_resources.make_seal(
+                executable_path,self.path
+            )
+            executable = self.signable_class(self, executable_path, signer)
+            executable.sign(self, signer)
+
 
 class App(Bundle):
     """ The kind of bundle that is visible as an app to the user.
@@ -260,3 +292,7 @@ class App(Bundle):
 
         # actually resign this bundle now
         super(App, self).resign(deep, signer)
+
+        # The entitlements are only needed temporarily while signing so we
+        # don't want to leave the file in the Payload/archive...
+        os.remove(self.entitlements_path);
