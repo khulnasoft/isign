@@ -28,6 +28,14 @@ class Signable(object):
     slot_classes = []
 
     def __init__(self, bundle, path, signer):
+        """
+        Initialize a Signable object.
+
+        Args:
+            bundle (Bundle): The bundle containing the signable.
+            path (str): The path to the signable file.
+            signer (Signer): The signer object used for signing.
+        """
         log.debug("working on {0}".format(path))
         self.bundle = bundle
         self.path = path
@@ -46,7 +54,12 @@ class Signable(object):
 
 
     def _parse_arches(self):
-        """ parse architectures and associated Codesig """
+        """
+        Parse architectures and associated Codesig.
+
+        Returns:
+            list: A list of architecture objects.
+        """
         arch_macho = self.m.data
         arches = []
         if 'FatArch' in arch_macho:
@@ -69,6 +82,17 @@ class Signable(object):
         return arches
 
     def _get_arch(self, macho, arch_offset, arch_size):
+        """
+        Get architecture information and associated Codesig.
+
+        Args:
+            macho (MachoFile): The Mach-O file object.
+            arch_offset (int): The offset of the architecture.
+            arch_size (int): The size of the architecture.
+
+        Returns:
+            dict: A dictionary containing architecture information and Codesig.
+        """
         arch = {'macho': macho, 'arch_offset': arch_offset, 'arch_size': arch_size}
 
         arch['cmds'] = {}
@@ -118,7 +142,17 @@ class Signable(object):
         return arch
 
     def _sign_arch(self, arch, app, signer):
-    # Returns slice-relative offset, code signature blob
+        """
+        Sign the architecture.
+
+        Args:
+            arch (dict): The architecture object.
+            app (App): The app object.
+            signer (Signer): The signer object.
+
+        Returns:
+            tuple: A tuple containing the slice-relative offset and code signature blob.
+        """
         arch['codesig'].resign(app, signer)
 
         new_codesig_data = arch['codesig'].build_data()
@@ -138,7 +172,16 @@ class Signable(object):
         return offset, new_codesig_data
 
     def should_fill_slot(self, codesig, slot):
+        """
+        Determine if a slot should be filled.
 
+        Args:
+            codesig (Codesig): The Codesig object.
+            slot (CodeDirectorySlot): The slot object.
+
+        Returns:
+            bool: True if the slot should be filled, False otherwise.
+        """
         slot_class = slot.__class__
         if slot_class not in self.slot_classes:
             # This signable does not have this slot
@@ -158,14 +201,25 @@ class Signable(object):
         return True
 
     def get_changed_bundle_id(self):
-        # Return a bundle ID to assign if Info.plist's CFBundleIdentifier value was changed
+        """
+        Get the changed bundle ID if the Info.plist's CFBundleIdentifier value was changed.
+
+        Returns:
+            str: The changed bundle ID, or None if it was not changed.
+        """
         if self.bundle.info_prop_changed('CFBundleIdentifier'):
             return self.bundle.get_info_prop('CFBundleIdentifier')
         else:
             return None
 
     def sign(self, app, signer):
+        """
+        Sign the signable.
 
+        Args:
+            app (App): The app object.
+            signer (Signer): The signer object.
+        """
         temp = tempfile.NamedTemporaryFile('wb', delete=False)
 
         # If signing fat binary from scratch, need special handling

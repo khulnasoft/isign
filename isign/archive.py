@@ -5,8 +5,8 @@
 
 import abc
 import biplist
-from bundle import App, Bundle, is_info_plist_native
-from exceptions import MissingHelpers, NotSignable, NotMatched
+from .bundle import App, Bundle, is_info_plist_native
+from .exceptions import MissingHelpers, NotSignable, NotMatched
 from distutils import spawn
 import logging
 import os
@@ -14,9 +14,10 @@ from os.path import abspath, dirname, exists, isdir, isfile, join, normpath
 import tempfile
 import re
 from subprocess import call
-from signer import AdhocSigner, Signer
+from .signer import AdhocSigner, Signer
 import shutil
 import zipfile
+import plistlib
 
 
 REMOVE_WATCHKIT = True
@@ -81,11 +82,7 @@ def process_watchkit(root_bundle_path, should_remove=False):
             raise NotSignable("Cannot yet sign WatchKit bundles")
 
 
-class Archive(object):
-    __metaclass__ = abc.ABCMeta
-    # we use abc.abstractmethod throughout because there are certain class
-    # methods we want to ensure are implemented.
-
+class Archive(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def unarchive_to_temp(self):
         """ Unarchive and copy to a temp directory """
@@ -167,7 +164,7 @@ class AppZipArchive(Archive):
         should be re-zipped. """
     app_dir_pattern = r'^([^/]+\.app/).*$'
     extensions = ['.zip']
-    helpers = ['zip', 'unzip']
+    helpers = []
 
     @classmethod
     def is_helpers_present(cls):
@@ -253,10 +250,25 @@ class AppZipArchive(Archive):
 
     def unarchive_to_temp(self):
         containing_dir = make_temp_dir()
-        call([get_helper('unzip'), "-qu", self.path, "-d", containing_dir])
+        self.extract_to(self.path, containing_dir)
         app_dir = abspath(join(containing_dir, self.relative_bundle_dir))
         process_watchkit(app_dir, REMOVE_WATCHKIT)
         return UncompressedArchive(containing_dir, self.relative_bundle_dir, self.__class__)
+
+    def extract_to(self, src, dst='.'):
+        zip_ref = zipfile.ZipFile(src, 'r')
+        for fileinfo in zip_ref.infolist():
+            try:
+                filename = fileinfo.filename.encode('cp437').decode()
+            except UnicodeEncodeError:
+                filename = fileinfo.filename
+            final_path = os.path.join(dst, filename)
+            os.makedirs(os.path.dirname(final_path), exist_ok=True)
+            if fileinfo.is_dir():
+                os.makedirs(final_path, exist_ok=True)
+                continue
+            outputfile = open(final_path, "wb")
+            shutil.copyfileobj(zip_ref.open(fileinfo.filename), outputfile)
 
     @classmethod
     def archive(cls, containing_dir, output_path):

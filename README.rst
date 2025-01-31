@@ -258,3 +258,59 @@ Authors
 Proof of concept by `Steven Hazel <https://github.com/sah>`__ and Neil Kandalgaonkar.
 
 Reference scripts using Apple tools by `Michael Han <https://github.com/mhan>`__.
+
+.. _Examples:
+
+Examples
+--------
+
+Here are some additional examples to help you get started with `isign`:
+
+1. Re-signing an IPA file:
+
+.. code::
+
+  $ isign -o resigned.ipa original.ipa
+
+2. Re-signing an app directory:
+
+.. code::
+
+  $ isign -o resigned.app /path/to/your.app
+
+3. Re-signing a zipped app directory:
+
+.. code::
+
+  $ isign -o resigned.app.zip /path/to/your.app.zip
+
+4. Displaying Info.plist properties from an app as JSON:
+
+.. code::
+
+  $ isign -d original.ipa
+
+5. Modifying Info.plist properties in a resigned app:
+
+.. code::
+
+  $ isign -i CFBundleIdentifier=com.example.myapp,CFBundleName=MyApp -o resigned.ipa original.ipa
+
+6. Using custom credentials:
+
+.. code::
+
+  $ isign -c /path/to/mycert.pem -k /path/to/mykey.pem -p /path/to/my.mobileprovision -o resigned.ipa original.ipa
+
+7. Using credentials from a specific directory:
+
+.. code::
+
+  $ isign -n /path/to/credentials -o resigned.ipa original.ipa
+
+8. Enabling verbose logging:
+
+.. code::
+
+  $ isign -v -o resigned.ipa original.ipa
+

@@ -3,6 +3,11 @@ import archive
 import exceptions
 import os
 from os.path import dirname, exists, expanduser, join, realpath
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # this comes with the repo
 PACKAGE_ROOT = dirname(realpath(__file__))
@@ -70,6 +75,7 @@ def resign(input_path,
     """ Mirrors archive.resign(), put here for convenience, to unify exceptions,
         and to omit default args """
     try:
+        logger.info(f"Resigning {input_path} with certificate {certificate} and provisioning profile {provisioning_profile}")
         return archive.resign(input_path,
                               deep,
                               certificate,
@@ -82,12 +88,15 @@ def resign(input_path,
     except exceptions.NotSignable as e:
         # re-raise the exception without exposing internal
         # details of how it happened
+        logger.error(f"Failed to resign {input_path}: {e}")
         raise NotSignable(e)
 
 
 def view(input_path):
     """ Obtain information about the app """
     try:
+        logger.info(f"Viewing information for {input_path}")
         return archive.view(input_path)
     except exceptions.NotSignable as e:
+        logger.error(f"Failed to view {input_path}: {e}")
         raise NotSignable(e)

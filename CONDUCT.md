@@ -14,6 +14,18 @@ Because we come from a variety of backgrounds, we don't want to assume that ever
 * Harassing or stalking individuals (online or in person)
 * Giving someone unwelcome sexual attention or making unwelcome physical contact (in the case of an IRL event)
 * Sharing sexual images or using sexually explicit language
+* Using offensive or inappropriate language, including but not limited to slurs, hate speech, or derogatory remarks
+* Engaging in any form of discrimination, including but not limited to discrimination based on race, gender, sexual orientation, religion, or disability
+* Threatening or intimidating others, including but not limited to threats of violence, harassment, or bullying
+
+### Consequences of inappropriate behavior
+
+Inappropriate behavior will not be tolerated in the `isign` community. If you engage in inappropriate behavior, the following consequences may occur:
+
+* You may be asked to stop the inappropriate behavior and comply with the Code of Conduct
+* You may be temporarily or permanently banned from the `isign` community, including but not limited to GitHub repositories, chat channels, and events
+* Your contributions to the `isign` project may be rejected or removed
+* You may be reported to relevant authorities if your behavior violates any laws or regulations
 
 In general: treat others how you would like to be treated, were you in their place. Don't be a jerk. _Do_ ask questions. _Do_ keep conflicts productively focused on technical issues. _Do_ think before you speak; remember that what is perceived as a funny witticism in your group of friends might be hurtful or reinforce hurtful stereotypes in the context of our diverse online community. _Do_ remember that we are all people, not robots, and all equally deserving of sensitivity and respect. (If and when robots join our community, let's treat them with respect too!)
 
