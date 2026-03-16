@@ -33,7 +33,7 @@ setup(
     install_requires=[
         'ak-construct==2.5.2',
         'memoizer==0.0.1',
-        'pyOpenSSL==24.1.0',
+        'pyOpenSSL==26.0.0',
         'biplist==1.0.3'
     ],
     package_data={
